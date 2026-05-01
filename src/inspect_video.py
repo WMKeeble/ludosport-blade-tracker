@@ -1,8 +1,10 @@
 from pathlib import Path
 import cv2
 
-VIDEO_PATH = Path("data/cuts/fight_01.mp4")
-OUT_DIR = Path("data/outputs")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+VIDEO_PATH = PROJECT_ROOT / "data" / "cuts" / "fight_01.mp4"
+OUT_DIR = PROJECT_ROOT / "data" / "processed" / "frames"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 cap = cv2.VideoCapture(str(VIDEO_PATH))
