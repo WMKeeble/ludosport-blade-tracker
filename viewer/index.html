@@ -14,36 +14,53 @@
   <main id="grid" class="grid"></main>
 
   <script>
+    const grid = document.getElementById("grid");
+    const status = document.getElementById("status");
+    const cards = new Map();
+
     async function loadImages() {
-      const response = await fetch(`/api/images?t=${Date.now()}`);
-      const images = await response.json();
+        const response = await fetch(`/api/images?t=${Date.now()}`);
+        const images = await response.json();
+        const currentImages = new Set(images);
 
-      const grid = document.getElementById("grid");
-      const status = document.getElementById("status");
+        // Remove cards for deleted images
+        for (const [name, card] of cards.entries()) {
+            if (!currentImages.has(name)) {
+                card.remove();
+                cards.delete(name);
+            }
+        }
 
-      grid.innerHTML = "";
+        // Add/update cards
+        for (const image of images) {
+            let card = cards.get(image);
 
-      for (const image of images) {
-        const card = document.createElement("section");
-        card.className = "card";
+            if (!card) {
+                card = document.createElement("section");
+                card.className = "card";
 
-        const title = document.createElement("h2");
-        title.textContent = image;
+                const title = document.createElement("h2");
+                title.textContent = image;
 
-        const img = document.createElement("img");
-        img.src = `/debug/${image}?t=${Date.now()}`;
-        img.alt = image;
+                const img = document.createElement("img");
+                img.alt = image;
 
-        card.appendChild(title);
-        card.appendChild(img);
-        grid.appendChild(card);
-      }
+                card.appendChild(title);
+                card.appendChild(img);
+                grid.appendChild(card);
 
-      status.textContent = `${images.length} debug image(s) loaded`;
-    }
+                cards.set(image, card);
+            }
 
-    loadImages();
-    setInterval(loadImages, 1000);
-  </script>
+            const img = card.querySelector("img");
+            img.src = `/debug/${image}?t=${Date.now()}`;
+        }
+
+        status.textContent = `${images.length} debug image(s) loaded`;
+        }
+
+        loadImages();
+        setInterval(loadImages, 1000);
+    </script>  
 </body>
 </html>
