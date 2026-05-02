@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Blade Tracker Debug Viewer</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Blade Tracker Debug Viewer</h1>
+    <p id="status">Loading...</p>
+  </header>
+
+  <main id="grid" class="grid"></main>
+
+  <script>
+    async function loadImages() {
+      const response = await fetch(`/api/images?t=${Date.now()}`);
+      const images = await response.json();
+
+      const grid = document.getElementById("grid");
+      const status = document.getElementById("status");
+
+      grid.innerHTML = "";
+
+      for (const image of images) {
+        const card = document.createElement("section");
+        card.className = "card";
+
+        const title = document.createElement("h2");
+        title.textContent = image;
+
+        const img = document.createElement("img");
+        img.src = `/debug/${image}?t=${Date.now()}`;
+        img.alt = image;
+
+        card.appendChild(title);
+        card.appendChild(img);
+        grid.appendChild(card);
+      }
+
+      status.textContent = `${images.length} debug image(s) loaded`;
+    }
+
+    loadImages();
+    setInterval(loadImages, 1000);
+  </script>
+</body>
+</html>

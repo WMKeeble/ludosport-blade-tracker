@@ -89,10 +89,10 @@ for cnt in contours:
         1,
     )
 
-cv2.imwrite(str(OUT_DIR / "contours.jpg"), contour_img)
-cv2.imwrite(str(OUT_DIR / "original.jpg"), frame)
-cv2.imwrite(str(OUT_DIR / "mask.jpg"), mask_clean)
-cv2.imwrite(str(OUT_DIR / "overlay.jpg"), combined)
-cv2.imwrite(str(OUT_DIR / "mask_dilated.jpg"), mask_dilated)
+cv2.imwrite(str(OUT_DIR / "01_original.jpg"), frame)
+cv2.imwrite(str(OUT_DIR / "02_mask.jpg"), mask_clean)
+cv2.imwrite(str(OUT_DIR / "03_overlay.jpg"), combined)
+cv2.imwrite(str(OUT_DIR / "04_mask_dilated.jpg"), mask_dilated)
+cv2.imwrite(str(OUT_DIR / "05_contours.jpg"), contour_img)
 
 print(f"Saved debug images to {OUT_DIR}")
