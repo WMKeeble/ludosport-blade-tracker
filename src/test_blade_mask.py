@@ -30,10 +30,60 @@ mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_CLOSE, kernel)
 overlay = frame.copy()
 overlay[mask_clean > 0] = [0, 0, 255]  # red overlay in BGR
 
-combined = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
+combined = cv2.addWeighted(frame, 0.5, overlay, 0.5, 0)
 
+# Slight blur to merge nearby pixels
+mask_blur = cv2.GaussianBlur(mask_clean, (5, 5), 0)
+
+# Threshold again to re-binarise
+_, mask_thresh = cv2.threshold(mask_blur, 127, 255, cv2.THRESH_BINARY)
+
+# Dilate to connect blade segments
+kernel = np.ones((5, 5), np.uint8)
+mask_dilated = cv2.dilate(mask_thresh, kernel, iterations=1)
+
+contours, _ = cv2.findContours(mask_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+contour_img = frame.copy()
+
+for cnt in contours:
+    area = cv2.contourArea(cnt)
+
+    # Ignore tiny noise
+    if area < 100:
+        continue
+
+    rect = cv2.minAreaRect(cnt)
+    (cx, cy), (w, h), angle = rect
+    
+    long_side = max(w, h)
+    short_side = min(w, h)
+
+    if short_side == 0:
+        continue
+
+    aspect_ratio = long_side / short_side
+
+    if aspect_ratio < 3:
+        continue
+    box = cv2.boxPoints(rect)
+    box = box.astype(int)
+
+    cv2.drawContours(contour_img, [box], 0, (0, 255, 0), 2)
+    cv2.putText(
+        contour_img,
+        f"AR {aspect_ratio:.1f}",
+        (int(cx), int(cy)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 255, 0),
+        1,
+    )
+
+cv2.imwrite(str(OUT_DIR / "contours.jpg"), contour_img)
 cv2.imwrite(str(OUT_DIR / "original.jpg"), frame)
 cv2.imwrite(str(OUT_DIR / "mask.jpg"), mask_clean)
 cv2.imwrite(str(OUT_DIR / "overlay.jpg"), combined)
+cv2.imwrite(str(OUT_DIR / "mask_dilated.jpg"), mask_dilated)
 
 print(f"Saved debug images to {OUT_DIR}")
