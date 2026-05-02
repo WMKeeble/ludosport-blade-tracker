@@ -1,9 +1,15 @@
 from pathlib import Path
 import cv2
 import numpy as np
+import argparse
 
-INPUT_FRAME = Path("data/processed/frames/fight_001_t001.jpg")
-OUT_DIR = Path("data/processed/debug_masks")
+parser = argparse.ArgumentParser(description="Process an image.")
+parser.add_argument("image", help="Path to the input image")
+
+args = parser.parse_args()
+
+INPUT_FRAME = Path(args.image)
+OUT_DIR = Path("data/processed/debug")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 frame = cv2.imread(str(INPUT_FRAME))
@@ -39,7 +45,7 @@ mask_blur = cv2.GaussianBlur(mask_clean, (5, 5), 0)
 _, mask_thresh = cv2.threshold(mask_blur, 127, 255, cv2.THRESH_BINARY)
 
 # Dilate to connect blade segments
-kernel = np.ones((5, 5), np.uint8)
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 3))
 mask_dilated = cv2.dilate(mask_thresh, kernel, iterations=1)
 
 contours, _ = cv2.findContours(mask_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -59,12 +65,15 @@ for cnt in contours:
     long_side = max(w, h)
     short_side = min(w, h)
 
+    if long_side < 30:
+        continue
+
     if short_side == 0:
         continue
 
     aspect_ratio = long_side / short_side
 
-    if aspect_ratio < 3:
+    if aspect_ratio < 2:
         continue
     box = cv2.boxPoints(rect)
     box = box.astype(int)
