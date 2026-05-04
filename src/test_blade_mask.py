@@ -2,6 +2,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import argparse
+import shutil
 
 parser = argparse.ArgumentParser(description="Process an image.")
 parser.add_argument("image", help="Path to the input image")
@@ -10,6 +11,10 @@ args = parser.parse_args()
 
 INPUT_FRAME = Path(args.image)
 OUT_DIR = Path("data/processed/debug")
+
+if OUT_DIR.exists():
+    shutil.rmtree(OUT_DIR)
+
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 frame = cv2.imread(str(INPUT_FRAME))
@@ -28,9 +33,9 @@ upper = np.array([165, 255, 255])
 mask = cv2.inRange(hsv, lower, upper)
 
 # Clean up noise
-kernel = np.ones((3, 3), np.uint8)
-mask_clean = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_CLOSE, kernel)
+cleanup_kernel = np.ones((3, 3), np.uint8)
+mask_clean = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cleanup_kernel)
+mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_CLOSE, cleanup_kernel)
 
 # Overlay mask on original frame
 overlay = frame.copy()
@@ -45,10 +50,19 @@ mask_blur = cv2.GaussianBlur(mask_clean, (5, 5), 0)
 _, mask_thresh = cv2.threshold(mask_blur, 127, 255, cv2.THRESH_BINARY)
 
 # Dilate to connect blade segments
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 3))
-mask_dilated = cv2.dilate(mask_thresh, kernel, iterations=1)
 
-contours, _ = cv2.findContours(mask_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+square_5x5 = np.ones((5, 5), np.uint8)
+horizontal_9x3 = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 3))
+horizontal_15x3 = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 3))
+
+mask_dilated_square = cv2.dilate(mask_thresh, square_5x5, iterations=1)
+mask_dilated_horizontal_9x3 = cv2.dilate(mask_thresh, horizontal_9x3, iterations=1)
+mask_dilated_horizontal_15x3 = cv2.dilate(mask_thresh, horizontal_15x3, iterations=1)
+
+
+
+# Select contours
+contours, _ = cv2.findContours(mask_dilated_horizontal_15x3, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
 contour_img = frame.copy()
 
@@ -89,10 +103,19 @@ for cnt in contours:
         1,
     )
 
-cv2.imwrite(str(OUT_DIR / "01_original.jpg"), frame)
-cv2.imwrite(str(OUT_DIR / "02_mask.jpg"), mask_clean)
-cv2.imwrite(str(OUT_DIR / "03_overlay.jpg"), combined)
-cv2.imwrite(str(OUT_DIR / "04_mask_dilated.jpg"), mask_dilated)
-cv2.imwrite(str(OUT_DIR / "05_contours.jpg"), contour_img)
+outputs = [
+    ("original.jpg", frame),
+    ("mask.jpg", mask_clean),
+    ("overlay.jpg", combined),
+    ("mask_dilated_square.jpg", mask_dilated_square),
+    ("mask_dilated_horizontal_9x3.jpg", mask_dilated_horizontal_9x3),
+    ("mask_dilated_horizontal_15x3.jpg", mask_dilated_horizontal_15x3),
+    ("contours.jpg", contour_img)
+    ]
 
+def save_debug_images(outputs, out_dir):
+    for i, (name, img) in enumerate(outputs):
+        cv2.imwrite(out_dir /  f"{i:02d}_{name}", img)
+
+save_debug_images(outputs, OUT_DIR)
 print(f"Saved debug images to {OUT_DIR}")
