@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import argparse
 import shutil
+import math
 
 parser = argparse.ArgumentParser(description="Process an image.")
 parser.add_argument("image", help="Path to the input image")
@@ -49,6 +50,60 @@ mask_blur = cv2.GaussianBlur(mask_clean, (5, 5), 0)
 # Threshold again to re-binarise
 _, mask_thresh = cv2.threshold(mask_blur, 127, 255, cv2.THRESH_BINARY)
 
+
+# Hough Transforms
+
+#edges = cv2.Canny(mask_thresh, 50, 150)
+
+lines = cv2.HoughLinesP(
+    mask_thresh,
+    rho=1,
+    theta=np.pi/180,
+    threshold=20,
+    minLineLength=35,
+    maxLineGap=8
+)
+
+line_img = frame.copy()
+height, width = frame.shape[:2]
+
+print(f"Lines found: {0 if lines is None else len(lines)}")
+
+if lines is not None:
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+
+        dx = x2 - x1
+        dy = y2 - y1
+
+        length = math.hypot(dx, dy)
+        angle = math.degrees(math.atan2(dy, dx))
+
+        if max(y1, y2) < height * 0.35:
+            continue
+
+        if length < 25:
+            continue
+
+        if length > 180:
+            continue
+
+        print(f"line: length={length:.1f}, angle={angle:.1f}, points=({x1}, {y1}) -> ({x2}, {y2})")
+
+        cv2.line(line_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        cv2.putText(
+            line_img,
+            f"{length:.0f}px {angle:.0f}deg",
+            (x1, y1),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            (0, 255, 0),
+            1,
+        )
+
+        
+
 # Dilate to connect blade segments
 
 square_5x5 = np.ones((5, 5), np.uint8)
@@ -58,8 +113,6 @@ horizontal_15x3 = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 3))
 mask_dilated_square = cv2.dilate(mask_thresh, square_5x5, iterations=1)
 mask_dilated_horizontal_9x3 = cv2.dilate(mask_thresh, horizontal_9x3, iterations=1)
 mask_dilated_horizontal_15x3 = cv2.dilate(mask_thresh, horizontal_15x3, iterations=1)
-
-
 
 # Select contours
 contours, _ = cv2.findContours(mask_dilated_horizontal_15x3, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -107,10 +160,12 @@ outputs = [
     ("original.jpg", frame),
     ("mask.jpg", mask_clean),
     ("overlay.jpg", combined),
-    ("mask_dilated_square.jpg", mask_dilated_square),
-    ("mask_dilated_horizontal_9x3.jpg", mask_dilated_horizontal_9x3),
-    ("mask_dilated_horizontal_15x3.jpg", mask_dilated_horizontal_15x3),
-    ("contours.jpg", contour_img)
+    ("mask_thresh.jpg", mask_thresh),
+    ("hough_lines.jpg", line_img)
+    #("mask_dilated_square.jpg", mask_dilated_square),
+    #("mask_dilated_horizontal_9x3.jpg", mask_dilated_horizontal_9x3),
+    #("mask_dilated_horizontal_15x3.jpg", mask_dilated_horizontal_15x3),
+    #("contours.jpg", contour_img)
     ]
 
 def save_debug_images(outputs, out_dir):

@@ -11,4 +11,6 @@ Brightness thresholding does not work - the blades are notably less bright than 
 Currently working on morphology. I suspect later I will need to use more sophisticated methods - detecting athlete's skeletons to pick out the blade, especially for other blade colours.
 
 ## 20206-05-04
+Improved debuggability a bunch. Got the viewer running nicely so I can see what's happening at each stage.
 
+Started work on implementing Hough lines.
